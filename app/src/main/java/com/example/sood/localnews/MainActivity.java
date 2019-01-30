@@ -21,14 +21,18 @@ public class MainActivity extends AppCompatActivity {
         newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
         newsApiTextView.setText(android.text.Html.fromHtml("<a href='https://newsapi.org/'> Powered by News API </a>"));
 
-        ArrayList<NewsItem> newsItemArrayList = new ArrayList<NewsItem>();
+        ArrayList<NewsItem> newsItemArrayList = NewsApiRequest.getNewsArticles(getApplicationContext());
 
+/*
         for(int i = 0; i < 10; i++)
             newsItemArrayList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));
+*/
 
-        ListView newsList = findViewById(R.id.news_list_view);
-        NewsItemAdapter adapter = new NewsItemAdapter(this, newsItemArrayList);
-        newsList.setAdapter(adapter);
+        if(newsItemArrayList != null) {
+            ListView newsList = findViewById(R.id.news_list_view);
+            NewsItemAdapter adapter = new NewsItemAdapter(this, newsItemArrayList);
+            newsList.setAdapter(adapter);
+        }
 
     }
 }
