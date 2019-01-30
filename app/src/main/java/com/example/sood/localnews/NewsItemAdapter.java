@@ -9,6 +9,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.squareup.picasso.Picasso;
+
 import java.util.ArrayList;
 
 /**
@@ -48,10 +50,14 @@ public class NewsItemAdapter extends ArrayAdapter<NewsItem> {
         TextView newsDateTextView = listItemView.findViewById(R.id.news_item_date_text_view);
         newsDateTextView.setText(currentNewsItem.getDate());
 
-        /*
+
         ImageView newsIconImageView = listItemView.findViewById(R.id.news_item_icon_image_view);
-        newsIconImageView.setImageBitmap(currentNewsItem.getIcon());
-        */
+        Picasso.get()
+                .load(currentNewsItem.getUrlToIcon())
+                .centerCrop()
+                .fit()
+                .into(newsIconImageView);
+
 
         return listItemView;
     }

@@ -13,7 +13,7 @@ public class NewsItem {
     private String date;
     private Bitmap icon;
     private String url;
-    private String urlToIcon;
+    private String urlToIcon = "https://media1.s-nbcnews.com/j/newscms/2019_05/2734146/190129-cold-weather-ac-929p_a786534c16a83cc04ae303de51bd693a.nbcnews-fp-1200-630.jpg";
 
     public NewsItem(String title, String source, String date, String url) {
 
@@ -43,5 +43,9 @@ public class NewsItem {
 
     public String getUrl() {
         return url;
+    }
+
+    public String getUrlToIcon() {
+        return  urlToIcon;
     }
 }
