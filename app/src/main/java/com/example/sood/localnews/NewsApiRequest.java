@@ -35,6 +35,7 @@ public class NewsApiRequest {
                     public void onResponse(JSONObject response) {
                         //mTextView.setText("Response: " + response.toString());
 
+                        //TODO: Parse JSON response and handle errors (status, no articles)
                         int totalResults = -1;
 
                         try {
