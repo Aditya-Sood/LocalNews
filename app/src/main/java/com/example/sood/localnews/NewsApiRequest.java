@@ -1,5 +1,7 @@
 package com.example.sood.localnews;
+import android.app.Activity;
 import android.content.Context;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -7,6 +9,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -21,12 +24,15 @@ public class NewsApiRequest {
     /*
     * Make API request
     * Parse response
-    * Return ArrayList of news items (articles)
+    * Display list
     * */
-    public static ArrayList<NewsItem> getNewsArticles(final Context context) {
+    public static void setNewsArticlesList(final Context applicationCtx, final ListView newsList, final Activity listActivity) {
 
         String baseUrl = NewsApiUrls.getBaseUrl();
-        ArrayList<NewsItem> newsArticlesList = new ArrayList<NewsItem>();
+        final ArrayList<NewsItem> newsArticlesList = new ArrayList<>();
+
+        /*for(int i = 0; i < 10; i++)
+            newsArticlesList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));*/
 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
                 (Request.Method.GET, baseUrl, null, new Response.Listener<JSONObject>() {
@@ -39,27 +45,67 @@ public class NewsApiRequest {
                         int totalResults = -1;
 
                         try {
+
+                            if(response.getString("status") == "error") {
+
+                                String msg = response.getString("code")+": "+response.getString("message");
+                                throw new java.lang.RuntimeException(msg);
+                            }
+
+                            newsArticlesList.clear();
+
                             totalResults = response.getInt("totalResults");
+
+                            JSONArray articlesArray = response.getJSONArray("articles");
+                            int articleCount = articlesArray.length();
+
+                            Toast.makeText(applicationCtx, "Article Count: "+articleCount, Toast.LENGTH_SHORT).show();
+
+                            for(int i = 0; i < articleCount; i++) {
+
+                                JSONObject article = articlesArray.getJSONObject(i);
+
+                                String source = article.getJSONObject("source").getString("name");
+                                String title = article.getString("title");
+                                String date = article.getString("publishedAt");
+                                String url = article.getString("url");
+                                String urlToIcon = article.getString("urlToImage");
+
+                                newsArticlesList.add(new NewsItem(title, source, date, url, urlToIcon));
+                            }
+
+                            if(newsArticlesList.size() > 0) {
+
+                                NewsItemAdapter adapter = new NewsItemAdapter(listActivity, newsArticlesList);
+                                newsList.setAdapter(adapter);
+                            }
+                            else {
+                                throw new java.lang.RuntimeException("Empty response");
+                            }
+
+
+                        }
+                        catch (RuntimeException e) {
+                            Toast.makeText(applicationCtx, "Runtime Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                         catch (JSONException e) {
-                            Toast.makeText(context, "JSON Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(applicationCtx, "JSON Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
 
-                        Toast.makeText(context, "Total Results: "+totalResults, Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(context, "Total Results: "+totalResults, Toast.LENGTH_SHORT).show();
                     }
                 }, new Response.ErrorListener() {
 
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         // TODO: Handle error
-                        Toast.makeText(context, "Network Response Error", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(applicationCtx, "Network Response Error", Toast.LENGTH_SHORT).show();
 
                     }
                 });
 
-// Access the RequestQueue through your singleton class.
-        RequestQueueSingleton.getInstance(context).addToRequestQueue(jsonObjectRequest);
+        // Access the RequestQueue through your singleton class.
+        RequestQueueSingleton.getInstance(applicationCtx).addToRequestQueue(jsonObjectRequest);
 
-        return newsArticlesList;
     }
 }

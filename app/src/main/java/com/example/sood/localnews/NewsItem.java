@@ -15,14 +15,13 @@ public class NewsItem {
     private String url;
     private String urlToIcon = "https://media1.s-nbcnews.com/j/newscms/2019_05/2734146/190129-cold-weather-ac-929p_a786534c16a83cc04ae303de51bd693a.nbcnews-fp-1200-630.jpg";
 
-    public NewsItem(String title, String source, String date, String url) {
+    public NewsItem(String title, String source, String date, String url, String urlToIcon) {
 
         this.title = title;
         this.source = source;
         this.date = date;
         this.url = url;
-
-        //TODO: Decide how and put value in image
+        this.urlToIcon = urlToIcon;
     }
 
     public String getTitle() {
