@@ -15,6 +15,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ActivityHelper.initialize(this);
 
         TextView newsApiTextView = findViewById(R.id.news_api_text_view);
         newsApiTextView.setClickable(true);
