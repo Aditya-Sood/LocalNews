@@ -14,8 +14,18 @@
         android:textAlignment="center"
         android:padding="2dp"
         android:layout_marginTop="5dp"
-        android:textSize="15dp"
+        android:textSize="10dp"
         android:text="Powered by News API" />
+
+    <TextView
+        android:id="@+id/current_region_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:padding="2dp"
+        android:layout_marginTop="5dp"
+        android:textSize="15dp"
+        android:text="Region: Searching" />
 
 
     <ListView
