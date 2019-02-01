@@ -21,7 +21,9 @@ public class NewsItem {
         this.source = source;
         this.date = date;
         this.url = url;
-        this.urlToIcon = urlToIcon;
+
+        if(urlToIcon != null && !urlToIcon.isEmpty())
+            this.urlToIcon = urlToIcon;
     }
 
     public String getTitle() {
