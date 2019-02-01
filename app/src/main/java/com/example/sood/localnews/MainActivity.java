@@ -2,10 +2,14 @@ package com.example.sood.localnews;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -34,11 +38,64 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private final int PERMISSIONS_REQUEST_COARSE_LOCATION = 1;
+    private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
     private GoogleApiClient mGoogleApiClient;
-    private Location mLastLocation;
+    protected Location mLastLocation;
     private LocationRequest mLocationRequest;
+    private AddressResultReceiver mResultReceiver = new AddressResultReceiver(new android.os.Handler());
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        ActivityHelper.initialize(this);
+
+        TextView newsApiTextView = findViewById(R.id.news_api_text_view);
+        newsApiTextView.setClickable(true);
+        newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
+        newsApiTextView.setText(android.text.Html.fromHtml("<a href='https://newsapi.org/'>Powered by News API</a>"));
+
+        buildGoogleApiClient();
+        mLocationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_LOW_POWER)
+                .setInterval(60 * 60 * 1000)
+                .setFastestInterval(30 * 60 * 1000);
+
+        final ListView newsList = findViewById(R.id.news_list_view);
+
+        NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, this);
+
+        newsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+
+                NewsItem selectedItem = (NewsItem) newsList.getItemAtPosition(position);
+
+                /*
+                * Using an implicit intent instead of a webview to avoid redundancy
+                * and keep app size small
+                * */
+                Uri webpage = Uri.parse(selectedItem.getUrl());
+                Intent webIntent = new Intent(Intent.ACTION_VIEW, webpage);
+
+                PackageManager packageManager = getPackageManager();
+                List<ResolveInfo> activities = packageManager.queryIntentActivities(webIntent, 0);
+                boolean isIntentSafe = activities.size() > 0;
+
+                if (isIntentSafe) {
+                    startActivity(webIntent);
+                }
+
+            }
+        });
+
+/*
+        for(int i = 0; i < 10; i++)
+            newsItemArrayList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));
+*/
+
+    }
 
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -77,62 +134,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
     }
 
-    private void handleNewLocation(Location location) {
-        Log.d(TAG, location.toString());
-    }
 
-
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        ActivityHelper.initialize(this);
-
-        TextView newsApiTextView = findViewById(R.id.news_api_text_view);
-        newsApiTextView.setClickable(true);
-        newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
-        newsApiTextView.setText(android.text.Html.fromHtml("<a href='https://newsapi.org/'>Powered by News API</a>"));
-
-        buildGoogleApiClient();
-        mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_LOW_POWER)
-                .setInterval(10 * 1000)
-                .setFastestInterval(10 * 1000);
-
-        final ListView newsList = findViewById(R.id.news_list_view);
-
-        NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, this);
-
-        newsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                NewsItem selectedItem = (NewsItem) newsList.getItemAtPosition(position);
-
-                /*
-                * Using an implicit intent instead of a webview to avoid redundancy
-                * and keep app size small
-                * */
-                Uri webpage = Uri.parse(selectedItem.getUrl());
-                Intent webIntent = new Intent(Intent.ACTION_VIEW, webpage);
-
-                PackageManager packageManager = getPackageManager();
-                List<ResolveInfo> activities = packageManager.queryIntentActivities(webIntent, 0);
-                boolean isIntentSafe = activities.size() > 0;
-
-                if (isIntentSafe) {
-                    startActivity(webIntent);
-                }
-
-            }
-        });
-
-/*
-        for(int i = 0; i < 10; i++)
-            newsItemArrayList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));
-*/
-
+    protected void startIntentService() {
+        Intent intent = new Intent(this, FetchAddressIntentService.class);
+        intent.putExtra(Constants.RECEIVER, mResultReceiver);
+        intent.putExtra(Constants.LOCATION_DATA_EXTRA, mLastLocation);
+        startService(intent);
     }
 
     //#######For connecting to Google API
@@ -152,14 +159,33 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         else
             Toast.makeText(getApplicationContext(), "Permission granted", Toast.LENGTH_LONG).show();
 
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (mLastLocation != null) {
-            String msg = "Latitude: "+String.valueOf(mLastLocation.getLatitude() + "\nLongitude: " + String.valueOf(mLastLocation.getLongitude()));
-            Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
-        }
-        else {
+        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        if (location == null) {
+
             Toast.makeText(getApplicationContext(), "Null Location Object", Toast.LENGTH_LONG).show();
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+
+            /*
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+            */
+
+        }
+        else {
+
+            mLastLocation = location;
+            String msg = "Latitude: "+String.valueOf(mLastLocation.getLatitude() + "\nLongitude: " + String.valueOf(mLastLocation.getLongitude()));
+            Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+
+            if (!Geocoder.isPresent()) {
+                Toast.makeText(MainActivity.this,
+                        "no_geocoder_available",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            //In callback of requestLocationUpdate
+            // Start service and update UI to reflect new location
+            startIntentService();
         }
 
     }
@@ -176,6 +202,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
         Toast.makeText(getApplicationContext(), "Google API connection failed", Toast.LENGTH_LONG).show();
+
+        if (connectionResult.hasResolution()) {
+            try {
+                // Start an Activity that tries to resolve the error
+                connectionResult.startResolutionForResult(this, CONNECTION_FAILURE_RESOLUTION_REQUEST);
+            } catch (IntentSender.SendIntentException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Log.i(TAG, "Location services connection failed with code " + connectionResult.getErrorCode());
+        }
     }
 
     //#######Google API
@@ -185,7 +222,62 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onLocationChanged(Location location) {
 
         handleNewLocation(location);
+
+        mLastLocation = location;
+
+        if (!Geocoder.isPresent()) {
+            Toast.makeText(MainActivity.this,
+                    "no_geocoder_available",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        //In callback of requestLocationUpdate
+        // Start service and update UI to reflect new location
+        startIntentService();
     }
 
     //#######For LocationListener
+
+    private void handleNewLocation(Location location) {
+        Log.d(TAG, location.toString());
+    }
+
+    class AddressResultReceiver extends ResultReceiver {
+        /**
+         * Create a new ResultReceive to receive results.  Your
+         * {@link #onReceiveResult} method will be called from the thread running
+         * <var>handler</var> if given, or from an arbitrary thread if null.
+         *
+         * @param handler
+         */
+        public AddressResultReceiver(Handler handler) {
+            super(handler);
+        }
+
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            if (resultData == null) {
+                return;
+            }
+
+            // Display the address string
+            // or an error message sent from the intent service.
+            String city = resultData.getString(Constants.RESULT_DATA_KEY);
+            if (city == null) {
+                city = "";
+            }
+
+            TextView regionTextView = findViewById(R.id.current_region_text_view);
+            // Show a toast message if an address was found.
+            if (resultCode == Constants.SUCCESS_RESULT) {
+                //Toast.makeText(getApplicationContext(), "City: "+city, Toast.LENGTH_LONG).show();
+                regionTextView.setText("Region: "+city);
+            }
+            else {
+                //Toast.makeText(getApplicationContext(), "City Error", Toast.LENGTH_LONG).show();
+                regionTextView.setText("Region Error");
+            }
+        }
+    }
 }
