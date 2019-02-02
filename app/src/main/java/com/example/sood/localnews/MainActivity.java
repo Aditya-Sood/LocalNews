@@ -49,6 +49,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private AddressResultReceiver mResultReceiver = new AddressResultReceiver(new android.os.Handler());
     private String currentRegion;
 
+    private Toolbar topToolbar;
+
     private ListView newsList;
     private boolean newsListSet = false;
 
@@ -56,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar topToolbar = findViewById(R.id.top_toolbar);
+        topToolbar = findViewById(R.id.top_toolbar);
         setSupportActionBar(topToolbar);
         ActivityHelper.initialize(this);
 
@@ -106,37 +108,38 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 */
 
     }
-/*
 
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.top_toolbar_menu, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_switch_news:
-                // User chose the "Settings" item, show the app settings UI...
-                NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, this, currentRegion);
-                return true;
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
 
-            */
-/*case R.id.action_favorite:
-                // User chose the "Favorite" action, mark the current item
-                // as a favorite...
-                return true;
-*//*
-
-            default:
-                // If we got here, the user's action was not recognized.
-                // Invoke the superclass to handle it.
-                return super.onOptionsItemSelected(item);
-
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_local_news) {
+            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
+            Toast.makeText(MainActivity.this, "Fetching local news", Toast.LENGTH_LONG).show();
+            return true;
         }
+        else if(id == R.id.action_top_news) {
+            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, null);
+            Toast.makeText(MainActivity.this, "Fetching top news", Toast.LENGTH_LONG).show();
+            return true;
+        }
+
+
+        return super.onOptionsItemSelected(item);
     }
-*/
+
 
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -306,7 +309,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 //Toast.makeText(getApplicationContext(), "City: "+city, Toast.LENGTH_LONG).show();
                 regionTextView.setText("Region: "+city);
                 currentRegion = city;
-                NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
+                //NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
                 newsListSet = true;
             }
             else {

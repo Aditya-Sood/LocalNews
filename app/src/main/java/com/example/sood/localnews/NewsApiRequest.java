@@ -65,7 +65,7 @@ public class NewsApiRequest {
                             JSONArray articlesArray = response.getJSONArray("articles");
                             int articleCount = articlesArray.length();
 
-                            Toast.makeText(applicationCtx, "Article Count: "+articleCount, Toast.LENGTH_SHORT).show();
+                            //Toast.makeText(applicationCtx, "Article Count: "+articleCount, Toast.LENGTH_SHORT).show();
 
                             for(int i = 0; i < articleCount; i++) {
 
