@@ -13,13 +13,17 @@ public class NewsApiUrls {
     private static final String PROTOCOL = "https";
     private static final String HOST = "newsapi.org";
     private static final String PATH = "v2";
-    private static final String ENDPOINT = "top-headlines";
 
-    private static final String BASE_URL = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT+"?apiKey="+API_KEY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE;
+    private static final String ENDPOINT_TOPHEADLINES = "top-headlines";
+    private static final String ENDPOINT_EVERYTHING = "everything";
 
-    public static String getBaseUrl() {
-        return  BASE_URL;
+    private static final String BASE_URL_TOPHEADLINES = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT_TOPHEADLINES+"?apiKey="+API_KEY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE;
+    private static final String BASE_URL_EVERYTHING = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT_EVERYTHING+"?apiKey="+API_KEY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE+"&q=";
+
+    public static String getBaseUrlTopheadlines() {
+        return  BASE_URL_TOPHEADLINES;
     }
+    public static String getBaseUrlEverything() { return BASE_URL_EVERYTHING;   }
 
     //public static final String
     //public static final String
