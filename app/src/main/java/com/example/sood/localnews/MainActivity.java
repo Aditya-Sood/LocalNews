@@ -23,6 +23,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,6 +52,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private String currentRegion;
 
     private Toolbar topToolbar;
+    private EditText keywordEditText;
+    private Button keywordButton;
 
     private ListView newsList;
     private boolean newsListSet = false;
@@ -63,6 +67,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         ActivityHelper.initialize(this);
 
         newsList = findViewById(R.id.news_list_view);
+        keywordEditText = findViewById(R.id.search_keyword_edit_text);
+        keywordButton = findViewById(R.id.search_keyword_button);
+        keywordButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String keyword = keywordEditText.getText().toString();
+                NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, keyword);
+            }
+        });
 
         TextView newsApiTextView = findViewById(R.id.news_api_text_view);
         newsApiTextView.setClickable(true);
@@ -109,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     }
 
-    
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.

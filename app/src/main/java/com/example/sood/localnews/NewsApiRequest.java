@@ -26,14 +26,14 @@ public class NewsApiRequest {
     * Parse response
     * Display list
     * */
-    public static void setNewsArticlesList(final Context applicationCtx, final ListView newsList, final Activity listActivity, String location) {
+    public static void setNewsArticlesList(final Context applicationCtx, final ListView newsList, final Activity listActivity, String keyword) {
 
         String baseUrl;
 
-        if(location == null)
+        if(keyword == null)
             baseUrl = NewsApiUrls.getBaseUrlTopheadlines();
         else
-            baseUrl = NewsApiUrls.getBaseUrlEverything()+location;
+            baseUrl = NewsApiUrls.getBaseUrlEverything()+"\""+keyword+"\"";
 
         final ArrayList<NewsItem> newsArticlesList = new ArrayList<>();
 
