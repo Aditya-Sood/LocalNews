@@ -1,6 +1,9 @@
 package com.example.sood.localnews;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -8,11 +11,14 @@ import android.content.pm.ResolveInfo;
 import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -62,12 +68,32 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ActivityHelper.initialize(this);
+
+        while(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                    PERMISSIONS_REQUEST_COARSE_LOCATION);
+
+        }
+
+        /*if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                    PERMISSIONS_REQUEST_COARSE_LOCATION);
+
+        }*/
+
         topToolbar = findViewById(R.id.top_toolbar);
         setSupportActionBar(topToolbar);
-        ActivityHelper.initialize(this);
 
         newsList = findViewById(R.id.news_list_view);
         keywordEditText = findViewById(R.id.search_keyword_edit_text);
+
         keywordButton = findViewById(R.id.search_keyword_button);
         keywordButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -84,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         buildGoogleApiClient();
         mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_LOW_POWER)
+                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
                 .setInterval(60 * 60 * 1000)
                 .setFastestInterval(30 * 60 * 1000);
 
@@ -121,6 +147,22 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 */
 
     }
+
+    /*private void createNotificationChannel() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Trending";
+            String description = "Noifications for trending news";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+
+            NotificationChannel trendingChannel = new NotificationChannel("Trending", name, importance);
+            trendingChannel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(trendingChannel);
+
+        }
+    }*/
 
 
     @Override
@@ -324,6 +366,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 currentRegion = city;
                 //NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
                 newsListSet = true;
+
+                Intent backgroundService = new Intent(getApplication(), TrendingNewsBackgroundService.class);
+                startService(backgroundService);
             }
             else {
                 //Toast.makeText(getApplicationContext(), "City Error", Toast.LENGTH_LONG).show();
