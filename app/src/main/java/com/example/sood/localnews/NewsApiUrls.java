@@ -23,7 +23,7 @@ public class NewsApiUrls {
     public static String getBaseUrlTopheadlines() {
         return  BASE_URL_TOPHEADLINES;
     }
-    public static String getBaseUrlEverything() { return BASE_URL_EVERYTHING;   }
+    public static String getBaseUrlEverything(String keyword) { return BASE_URL_EVERYTHING+"\""+keyword+"\"";   }
 
     //public static final String
     //public static final String
