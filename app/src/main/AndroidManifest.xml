@@ -14,7 +14,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
-        <service android:name=".TrendingNewsBackgroundService"/>
+        <service
+            android:name=".TrendingNewsBackgroundService"
+            android:permission="android.permission.BIND_JOB_SERVICE"/>
+
 
         <activity android:name=".MainActivity"
             android:screenOrientation="portrait">

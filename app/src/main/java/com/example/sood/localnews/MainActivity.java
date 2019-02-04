@@ -4,6 +4,9 @@ import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -103,6 +106,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
+        startNotificationJob();
+
         TextView newsApiTextView = findViewById(R.id.news_api_text_view);
         newsApiTextView.setClickable(true);
         newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
@@ -148,22 +153,26 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     }
 
-    /*private void createNotificationChannel() {
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Trending";
-            String description = "Noifications for trending news";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+    private void startNotificationJob() {
 
-            NotificationChannel trendingChannel = new NotificationChannel("Trending", name, importance);
-            trendingChannel.setDescription(description);
+        ComponentName componentName = new ComponentName(this, TrendingNewsBackgroundService.class);
+        JobInfo jobInfo = new JobInfo.Builder(0, componentName)
+                .setPeriodic(1000*60*15)//60*24)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .build();
 
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(trendingChannel);
+        JobScheduler jobScheduler = (JobScheduler) getSystemService(JOB_SCHEDULER_SERVICE);
+        int resultCode = jobScheduler.schedule(jobInfo);
 
+        if(resultCode == JobScheduler.RESULT_SUCCESS) {
+            Log.d(TAG, "###########################Notification job scheduled");
+        } else {
+            Log.d(TAG, "###########################Notification job not scheduled");
         }
-    }*/
 
+
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

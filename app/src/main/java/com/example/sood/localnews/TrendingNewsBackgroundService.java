@@ -3,22 +3,18 @@ package com.example.sood.localnews;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
+import android.app.job.JobParameters;
+import android.app.job.JobService;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Handler;
-import android.os.IBinder;
-import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
-import android.widget.Toast;
+import android.util.Log;
 
 import com.android.volley.NetworkResponse;
-import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.HttpHeaderParser;
-import com.android.volley.toolbox.JsonObjectRequest;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,33 +26,56 @@ import java.io.UnsupportedEncodingException;
  * Created by sood on 2/3/19.
  */
 
-public class TrendingNewsBackgroundService extends Service {
+public class TrendingNewsBackgroundService extends JobService {
 
+    private static final String TAG = TrendingNewsBackgroundService.class.getSimpleName();
+    boolean isWorking = false;
+    boolean jobCancelled = false;
     private static int count = 1;
-    private Handler mHandler;
-    // default interval for syncing data
-    public static final long DEFAULT_SYNC_INTERVAL = 1000;//60 * 60;
 
-    private Runnable runnableService = new Runnable() {
-        @Override
-        public void run() {
-            syncData();
-            // Repeat this runnable code block again every ... min
-            mHandler.postDelayed(runnableService, DEFAULT_SYNC_INTERVAL);
-        }
-    };
-
+    // Called by the Android system when it's time to run the job
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // Create the Handler object
-        mHandler = new Handler();
-        // Execute a runnable task as soon as possible
-        mHandler.post(runnableService);
+    public boolean onStartJob(JobParameters jobParameters) {
+        Log.d(TAG, "Job started!");
+        isWorking = true;
+        // We need 'jobParameters' so we can call 'jobFinished'
+        startWorkOnNewThread(jobParameters); // Services do NOT run on a separate thread
 
-        return START_STICKY;
+        return isWorking;
     }
 
-    private synchronized void syncData() {
+    private void startWorkOnNewThread(final JobParameters jobParameters) {
+        new Thread(new Runnable() {
+            public void run() {
+                doWork(jobParameters);
+            }
+        }).start();
+    }
+
+    private void doWork(JobParameters jobParameters) {
+
+        if (jobCancelled)
+            return;
+
+        displayTrendingNotification();
+
+        Log.d(TAG, "Job finished!");
+        isWorking = false;
+        boolean needsReschedule = false;
+        jobFinished(jobParameters, needsReschedule);
+    }
+
+    // Called if the job was cancelled before being finished
+    @Override
+    public boolean onStopJob(JobParameters jobParameters) {
+        Log.d(TAG, "Job cancelled before being completed.");
+        jobCancelled = true;
+        boolean needsReschedule = isWorking;
+        jobFinished(jobParameters, needsReschedule);
+        return needsReschedule;
+    }
+
+    private void displayTrendingNotification() {
 
         //Toast.makeText(getApplicationContext(), "Notification", Toast.LENGTH_SHORT).show();
 
@@ -119,84 +138,25 @@ public class TrendingNewsBackgroundService extends Service {
                 //Toast.makeText(applicationCtx, "Network Response Error", Toast.LENGTH_SHORT).show();
             }
         });
+
         RequestQueueSingleton.getInstance(getApplicationContext()).addToRequestQueue(cacheRequest);
 
-        /*JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
-                (Request.Method.GET, baseUrl, null, new Response.Listener<JSONObject>() {
+    }
 
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        //mTextView.setText("Response: " + response.toString());
+    private void createNotificationChannel() {
 
-                        //TODO: Parse JSON response and handle errors (status, no articles)
-                        int totalResults = -1;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "Trending";
+            String description = "Notifications for trending news";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
 
-                        try {
+            NotificationChannel trendingChannel = new NotificationChannel("Trending", name, importance);
+            trendingChannel.setDescription(description);
 
-                            if(response.getString("status") == "error") {
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(trendingChannel);
 
-                                String msg = response.getString("code")+": "+response.getString("message");
-                                throw new java.lang.RuntimeException(msg);
-                            }
-
-                            totalResults = response.getInt("totalResults");
-
-                            JSONArray articlesArray = response.getJSONArray("articles");
-                            int articleCount = articlesArray.length();
-
-                            if(articleCount > 0) {
-                                createNotificationChannel();
-
-                                String notificationMessage = articlesArray.getJSONObject(0).getString("title");
-
-                                createNotification(notificationMessage);
-                            }
-                            else {
-                                throw new java.lang.RuntimeException("Empty response");
-                            }
-
-                            //Toast.makeText(applicationCtx, "Article Count: "+articleCount, Toast.LENGTH_SHORT).show();
-
-                            *//*for(int i = 0; i < articleCount; i++) {
-
-                                JSONObject article = articlesArray.getJSONObject(i);
-
-                                String source = article.getJSONObject("source").getString("name");
-                                String title = article.getString("title");
-                                String date = article.getString("publishedAt");
-                                String url = article.getString("url");
-                                String urlToIcon = article.getString("urlToImage");
-
-                                newsArticlesList.add(new NewsItem(title, source, date, url, urlToIcon));
-                            }*//*
-
-
-                        }
-                        catch (RuntimeException e) {
-                            //Toast.makeText(applicationCtx, "Runtime Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                        catch (JSONException e) {
-                            //Toast.makeText(applicationCtx, "JSON Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-
-                        //Toast.makeText(context, "Total Results: "+totalResults, Toast.LENGTH_SHORT).show();
-                    }
-                }, new Response.ErrorListener() {
-
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // TODO: Handle error
-                        //Toast.makeText(applicationCtx, "Network Response Error", Toast.LENGTH_SHORT).show();
-
-                    }
-                });
-
-        // Access the RequestQueue through your singleton class.
-        RequestQueueSingleton.getInstance(getApplicationContext()).addToRequestQueue(jsonObjectRequest);
-*/
-        // call your rest service here
-
-
+        }
     }
 
     private void createNotification(String notificationContent) {
@@ -219,25 +179,4 @@ public class TrendingNewsBackgroundService extends Service {
         notificationManager.notify(0, mBuilder.build());
     }
 
-    private void createNotificationChannel() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Trending";
-            String description = "Notifications for trending news";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-
-            NotificationChannel trendingChannel = new NotificationChannel("Trending", name, importance);
-            trendingChannel.setDescription(description);
-
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(trendingChannel);
-
-        }
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
 }
