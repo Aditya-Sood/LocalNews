@@ -76,10 +76,9 @@ public class TrendingNewsBackgroundService extends JobService {
 
     private void displayTrendingNotification() {
 
-        //Toast.makeText(getApplicationContext(), "Notification", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "displayTrendingNotification started");
 
         String baseUrl = NewsApiUrls.getBaseUrlTopheadlines();
-        //String baseUrl = NewsApiUrls.getBaseUrlEverything(""+count);
 
         CacheRequest cacheRequest = new CacheRequest(0, baseUrl, new Response.Listener<NetworkResponse>() {
             @Override
@@ -88,8 +87,6 @@ public class TrendingNewsBackgroundService extends JobService {
                     final String jsonString = new String(networkResponse.data, HttpHeaderParser.parseCharset(networkResponse.headers));
                     JSONObject response = new JSONObject(jsonString);
 
-                    int totalResults = -1;
-
                     try {
 
                         if(response.getString("status") == "error") {
@@ -97,8 +94,6 @@ public class TrendingNewsBackgroundService extends JobService {
                             String msg = response.getString("code")+": "+response.getString("message");
                             throw new java.lang.RuntimeException(msg);
                         }
-
-                        totalResults = response.getInt("totalResults");
 
                         JSONArray articlesArray = response.getJSONArray("articles");
                         int articleCount = articlesArray.length();
@@ -116,24 +111,21 @@ public class TrendingNewsBackgroundService extends JobService {
 
                     }
                     catch (RuntimeException e) {
-                        //Toast.makeText(applicationCtx, "Runtime Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "Runtime Exception: "+e.getMessage());
                     }
                     catch (JSONException e) {
-                        //Toast.makeText(applicationCtx, "JSON Exception: "+e.getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "JSON Exception: "+e.getMessage());
                     }
 
-
-                    //mTextView.setText(jsonObject.toString(5));
                 } catch (UnsupportedEncodingException | JSONException e) {
                     e.printStackTrace();
+                    Log.d(TAG, "UnsupportedEncodingException | JSONException: "+e.getMessage());
                 }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                //mTextView.setText(error.toString());
-                // TODO: Handle error
-                //Toast.makeText(applicationCtx, "Network Response Error", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Network Response (Volley) Error: "+error.getMessage());
             }
         });
 

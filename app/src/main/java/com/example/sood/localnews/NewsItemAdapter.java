@@ -19,11 +19,6 @@ import java.util.ArrayList;
 
 public class NewsItemAdapter extends ArrayAdapter<NewsItem> {
 
-    /*
-    * TODO:
-    * 1. Respond to clicks
-    * */
-
     public NewsItemAdapter(Activity context, ArrayList<NewsItem> newsItemList) {
         super(context, 0, newsItemList);
     }
@@ -50,14 +45,12 @@ public class NewsItemAdapter extends ArrayAdapter<NewsItem> {
         TextView newsDateTextView = listItemView.findViewById(R.id.news_item_date_text_view);
         newsDateTextView.setText(currentNewsItem.getDate());
 
-
         ImageView newsIconImageView = listItemView.findViewById(R.id.news_item_icon_image_view);
         Picasso.get()
                 .load(currentNewsItem.getUrlToIcon())
                 .centerCrop()
                 .fit()
                 .into(newsIconImageView);
-
 
         return listItemView;
     }
