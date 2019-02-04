@@ -40,9 +40,13 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 
 import java.util.List;
@@ -55,10 +59,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
     private GoogleApiClient mGoogleApiClient;
-    protected Location mLastLocation;
-    private LocationRequest mLocationRequest;
+    protected static Location mLastLocation;
+    private static LocationRequest mLocationRequest;
     private AddressResultReceiver mResultReceiver = new AddressResultReceiver(new android.os.Handler());
-    private String currentRegion;
+    private static String currentRegion;
+    private LocationCallback mLocationCallback;
+    private FusedLocationProviderClient mFusedLocationClient;
+
+
 
     private Toolbar topToolbar;
     private EditText keywordEditText;
@@ -72,6 +80,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ActivityHelper.initialize(this);
+
+        if (savedInstanceState != null) {
+            currentRegion = savedInstanceState.getString("currentRegion");
+
+            if(currentRegion != null) {
+                Log.d(TAG, "Saved region: "+currentRegion);
+                TextView regionTextView = findViewById(R.id.current_region_text_view);
+                regionTextView.setText("Region: "+currentRegion);
+            }
+        }
 
         while(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -113,13 +131,45 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
         newsApiTextView.setText(android.text.Html.fromHtml("<a href='https://newsapi.org/'>Powered by News API</a>"));
 
-        buildGoogleApiClient();
-        mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setInterval(60 * 60 * 1000)
-                .setFastestInterval(30 * 60 * 1000);
+        /*buildGoogleApiClient();
+        createLocationRequest();*/
 
-        if(!newsListSet)
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    Log.d(TAG, "Callback locationResult is null");
+                    return;
+                }
+                for (Location location : locationResult.getLocations()) {
+
+                    Log.d(TAG, "Callback locationResult is being processed");
+                    reverseGeocode(location);
+                }
+            }
+        };
+
+        mFusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            reverseGeocode(location);
+                        }
+                        else
+                            createLocationRequest();
+                            startLocationUpdates();
+                            Log.d(TAG, "Location null");
+                    }
+                });
+
+        Log.d(TAG, "buildClient called");
+
+        if(currentRegion != null)
+            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
+        else if(!newsListSet)
             NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, this, null);
 
         newsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -170,6 +220,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
 
+    private void createLocationRequest() {
+        mLocationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setNumUpdates(1)
+                //.setMaxWaitTime(0)
+                .setInterval(10 * 1000)
+                .setFastestInterval(5 * 1000);
+    }
+
     private void startNotificationJob() {
 
         ComponentName componentName = new ComponentName(this, TrendingNewsBackgroundService.class);
@@ -206,6 +265,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_local_news) {
+            startLocationUpdates();
             NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
             Toast.makeText(MainActivity.this, "Fetching local news", Toast.LENGTH_LONG).show();
             return true;
@@ -261,6 +321,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
 
     protected void startIntentService() {
+
+        Log.d(TAG, "sendingIntent for background calculation");
         Intent intent = new Intent(this, FetchAddressIntentService.class);
         intent.putExtra(Constants.RECEIVER, mResultReceiver);
         intent.putExtra(Constants.LOCATION_DATA_EXTRA, mLastLocation);
@@ -271,7 +333,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     public void onConnected(@Nullable Bundle bundle) {
 
-        Log.i(TAG, "Location services connected.");
+        Log.i(TAG, "onConnected called");
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -281,14 +343,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     PERMISSIONS_REQUEST_COARSE_LOCATION);
 
         }
-        else
-            Toast.makeText(getApplicationContext(), "Permission granted", Toast.LENGTH_LONG).show();
+        //else
+            //Toast.makeText(getApplicationContext(), "Permission granted", Toast.LENGTH_LONG).show();
 
         Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (location == null) {
 
-            Toast.makeText(getApplicationContext(), "Null Location Object", Toast.LENGTH_LONG).show();
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+            Log.d(TAG, "getLastLocation == null");
+            //createLocationRequest();
+            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
 
             /*
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
@@ -296,7 +359,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         }
         else {
+            Log.d(TAG, "getLastLocation != null");
             reverseGeocode(location);
+            //createLocationRequest();
+            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
         }
 
     }
@@ -331,6 +397,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     public void onLocationChanged(Location location) {
 
+        Log.d(TAG, "onLocationChanged");
         handleNewLocation(location);
 
         reverseGeocode(location);
@@ -339,6 +406,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     //#######For LocationListener
 
     private void reverseGeocode(Location location) {
+
+        Log.d(TAG, "reverseGeocoding");
         mLastLocation = location;
         String msg = "Latitude: "+String.valueOf(mLastLocation.getLatitude() + "\nLongitude: " + String.valueOf(mLastLocation.getLongitude()));
         Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
@@ -373,33 +442,94 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
+
+            Log.d(TAG, "geocoder result received");
             if (resultData == null) {
+                Log.d(TAG, "geocoder result data is null");
                 return;
             }
 
             // Display the address string
             // or an error message sent from the intent service.
             String city = resultData.getString(Constants.RESULT_DATA_KEY);
-            if (city == null) {
+            /*if (city == null) {
+                Log.d(TAG, "geocoder result city is null");
                 city = "";
-            }
+            }*/
 
             TextView regionTextView = findViewById(R.id.current_region_text_view);
             // Show a toast message if an address was found.
-            if (resultCode == Constants.SUCCESS_RESULT) {
+            if (resultCode == Constants.SUCCESS_RESULT && city != null) {
+                Log.d(TAG, "geocoder result SUCCESS");
                 //Toast.makeText(getApplicationContext(), "City: "+city, Toast.LENGTH_LONG).show();
                 regionTextView.setText("Region: "+city);
                 currentRegion = city;
-                //NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
+                NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
                 newsListSet = true;
 
                 Intent backgroundService = new Intent(getApplication(), TrendingNewsBackgroundService.class);
                 startService(backgroundService);
             }
             else {
+
+                Log.d(TAG, "geocoder result FAILURE");
                 //Toast.makeText(getApplicationContext(), "City Error", Toast.LENGTH_LONG).show();
                 regionTextView.setText("Region Error");
             }
         }
     }
+
+    /*@Override
+    protected void onResume() {
+        super.onResume();
+        mGoogleApiClient.connect();
+    }*/
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
+        createLocationRequest();
+        startLocationUpdates();
+        /*if (mRequestingLocationUpdates) {
+
+        }*/
+    }
+
+    private void startLocationUpdates() {
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED)   return;
+
+        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback,null /* Looper */);
+    }
+
+
+    /*@Override
+    protected void onPause() {
+        super.onPause();
+        if (mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+            mGoogleApiClient.disconnect();
+        }
+    }*/
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    private void stopLocationUpdates() {
+        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+    }
+
+    protected void onSaveInstanceState (Bundle outState) {
+
+        super.onSaveInstanceState(outState);
+        outState.putString("currentRegion", currentRegion);
+
+    }
+
 }
