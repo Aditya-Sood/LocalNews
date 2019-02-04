@@ -31,7 +31,6 @@ public class TrendingNewsBackgroundService extends JobService {
     private static final String TAG = TrendingNewsBackgroundService.class.getSimpleName();
     boolean isWorking = false;
     boolean jobCancelled = false;
-    private static int count = 1;
 
     // Called by the Android system when it's time to run the job
     @Override
@@ -107,8 +106,7 @@ public class TrendingNewsBackgroundService extends JobService {
                         if(articleCount > 0) {
                             createNotificationChannel();
 
-                            String notificationMessage = count + "\n" + articlesArray.getJSONObject(0).getString("title");
-                            count++;
+                            String notificationMessage = articlesArray.getJSONObject(0).getString("title");
 
                             createNotification(notificationMessage);
                         }

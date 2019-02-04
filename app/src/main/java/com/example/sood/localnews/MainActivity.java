@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         ComponentName componentName = new ComponentName(this, TrendingNewsBackgroundService.class);
         JobInfo jobInfo = new JobInfo.Builder(0, componentName)
-                .setPeriodic(1000*60*15)//60*24)
+                .setPeriodic(1000*60*60*4) //Update every 4 hours
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .build();
 
