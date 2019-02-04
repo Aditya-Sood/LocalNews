@@ -146,6 +146,22 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
+        newsList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+
+                NewsItem selectedItem = (NewsItem) newsList.getItemAtPosition(position);
+
+                Intent urlShareIntent = new Intent();
+                urlShareIntent.setAction(Intent.ACTION_SEND);
+                urlShareIntent.putExtra(Intent.EXTRA_TEXT, selectedItem.getUrl());
+                urlShareIntent.setType("text/plain");
+                startActivity(Intent.createChooser(urlShareIntent, "Share article with:"));
+
+                return true;
+            }
+        });
+
 /*
         for(int i = 0; i < 10; i++)
             newsItemArrayList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));
@@ -214,6 +230,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         mGoogleApiClient.connect();
         Toast.makeText(this, "connected", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "API connect requested");
     }
 
     @Override
