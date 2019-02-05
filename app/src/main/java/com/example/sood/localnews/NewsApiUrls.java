@@ -19,7 +19,7 @@ public class NewsApiUrls {
     private static final String ENDPOINT_EVERYTHING = "everything";
 
     private static final String BASE_URL_TOPHEADLINES = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT_TOPHEADLINES+"?apiKey="+API_KEY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE;
-    private static final String BASE_URL_EVERYTHING = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT_EVERYTHING+"?apiKey="+API_KEY+"&country="+COUNTRY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE+"&q=";
+    private static final String BASE_URL_EVERYTHING = PROTOCOL+"://"+HOST+"/"+PATH+"/"+ENDPOINT_EVERYTHING+"?apiKey="+API_KEY+"&language="+LANGUAGE+"&pageSize="+PAGE_SIZE+"&q=";
 
     public static String getBaseUrlTopheadlines() {
         return  BASE_URL_TOPHEADLINES;
