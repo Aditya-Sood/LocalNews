@@ -1,27 +1,18 @@
 package com.example.sood.localnews;
 
 import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.ResultReceiver;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -38,27 +29,37 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
+/**
+ * News (com.example.sood.localnews)
+ *
+ * Flow: App begins by setting the news list to top headlines. If the location update is received, then it displays the local headlines
+ *       A periodic background job to build notifications of trending news is also created.
+ *
+ * Glitches - Location can be glitchy because:
+ *          1. getLastLocation() can be null if not used recently from the Play API by an application like Google Maps
+ *          2. 'requestLocation' is set to use Wifi & Network provided locations, which aren't updated frequently for static access points
+ *          3. Even on update, it depends on the android system to respond to requestLocationUpdates(), which may not be immediate
+ *
+ *          Hence loading local news can take time (as much as the system takes to respond with a valid location object)
+ *
+ *
+ * HOWEVER, top headlines and keyword searches work without any issues
+ **/
+
+public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = MainActivity.class.getSimpleName();
-
     private final int PERMISSIONS_REQUEST_COARSE_LOCATION = 1;
-    private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 
-    private GoogleApiClient mGoogleApiClient;
     protected static Location mLastLocation;
     private static LocationRequest mLocationRequest;
     private AddressResultReceiver mResultReceiver = new AddressResultReceiver(new android.os.Handler());
@@ -66,14 +67,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private LocationCallback mLocationCallback;
     private FusedLocationProviderClient mFusedLocationClient;
 
-
-
-    private Toolbar topToolbar;
     private EditText keywordEditText;
-    private Button keywordButton;
-
     private ListView newsList;
-    private boolean newsListSet = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         setContentView(R.layout.activity_main);
         ActivityHelper.initialize(this);
 
+        /* Since location updates are on the system's behest, use last saved region to display local news*/
         if (savedInstanceState != null) {
             currentRegion = savedInstanceState.getString("currentRegion");
 
@@ -91,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         }
 
+        /* Location permission is fundamental to the app's functioning. So repeatedly request permission*/
         while(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
 
@@ -100,40 +97,33 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         }
 
-        /*if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                    PERMISSIONS_REQUEST_COARSE_LOCATION);
-
-        }*/
-
-        topToolbar = findViewById(R.id.top_toolbar);
+        Toolbar topToolbar = findViewById(R.id.top_toolbar);
         setSupportActionBar(topToolbar);
 
         newsList = findViewById(R.id.news_list_view);
         keywordEditText = findViewById(R.id.search_keyword_edit_text);
 
-        keywordButton = findViewById(R.id.search_keyword_button);
+        Button keywordButton = findViewById(R.id.search_keyword_button);
         keywordButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(View v) { //Search articles corresponding to keyword entered by user
                 String keyword = keywordEditText.getText().toString();
                 NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, keyword);
+                Toast.makeText(MainActivity.this, "Fetching search results", Toast.LENGTH_LONG).show();
             }
         });
 
+        //Start the background job to periodically show notifications of trending news
         startNotificationJob();
 
+        /* Complying with the terms of use of News API by displaying a link to the site*/
         TextView newsApiTextView = findViewById(R.id.news_api_text_view);
         newsApiTextView.setClickable(true);
         newsApiTextView.setMovementMethod(LinkMovementMethod.getInstance());
         newsApiTextView.setText(android.text.Html.fromHtml("<a href='https://newsapi.org/'>Powered by News API</a>"));
 
-        /*buildGoogleApiClient();
-        createLocationRequest();*/
 
+        //For requesting location updates
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mLocationCallback = new LocationCallback() {
             @Override
@@ -150,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         };
 
+        //Access last location (if exists) stored by the Play API in response to an earlier request (possibly from other apps)
         mFusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, new OnSuccessListener<Location>() {
                     @Override
@@ -159,18 +150,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             reverseGeocode(location);
                         }
                         else
+
+                            //Last location doesn't exist -> Request location update
                             createLocationRequest();
-                            startLocationUpdates();
-                            Log.d(TAG, "Location null");
+                        startLocationUpdates();
+                        Log.d(TAG, "Location null");
                     }
                 });
 
-        Log.d(TAG, "buildClient called");
-
-        if(currentRegion != null)
-            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
-        else if(!newsListSet)
+        // Value for @param currentRegion doesn't exist, so display top headlines
+        if(currentRegion == null)
             NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, this, null);
+
 
         newsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -197,6 +188,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
 
         newsList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+
+            //Feature to share articles through messaging, email, etc. on long pressing news list item
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 
@@ -211,26 +204,21 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 return true;
             }
         });
-
-/*
-        for(int i = 0; i < 10; i++)
-            newsItemArrayList.add(new NewsItem("Title "+i, "Source "+i, "DD-MM-YY", ""));
-*/
-
     }
 
 
+    //Assigns a new location request object with the details of the request
     private void createLocationRequest() {
         mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setNumUpdates(1)
-                //.setMaxWaitTime(0)
+                .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY) //Not high-accuracy to prevent battery drain, & because only need general region of the user
+                .setNumUpdates(1) //As only one update is required to set currentRegion
                 .setInterval(10 * 1000)
                 .setFastestInterval(5 * 1000);
     }
 
-    private void startNotificationJob() {
 
+    //Starts background notification job to periodically display trending news headlines
+    private void startNotificationJob() {
         ComponentName componentName = new ComponentName(this, TrendingNewsBackgroundService.class);
         JobInfo jobInfo = new JobInfo.Builder(0, componentName)
                 .setPeriodic(1000*60*60*4) //Update every 4 hours
@@ -245,10 +233,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else {
             Log.d(TAG, "###########################Notification job not scheduled");
         }
-
-
     }
 
+
+    //For the tool bar at the top
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -258,68 +246,44 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_local_news) {
+            if(currentRegion != null)
+                NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
             startLocationUpdates();
-            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
             Toast.makeText(MainActivity.this, "Fetching local news", Toast.LENGTH_LONG).show();
             return true;
         }
         else if(id == R.id.action_top_news) {
             NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, null);
-            Toast.makeText(MainActivity.this, "Fetching top news", Toast.LENGTH_LONG).show();
+            Toast.makeText(MainActivity.this, "Fetching top headlines", Toast.LENGTH_LONG).show();
             return true;
         }
-
 
         return super.onOptionsItemSelected(item);
     }
 
 
-    protected synchronized void buildGoogleApiClient() {
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .addApi(LocationServices.API)
-                .build();
+    //Starts service to obtain region name from the location object
+    private void reverseGeocode(Location location) {
 
-        mGoogleApiClient.connect();
-        Toast.makeText(this, "connected", Toast.LENGTH_SHORT).show();
-        Log.d(TAG, "API connect requested");
-    }
+        Log.d(TAG, "reverseGeocoding");
+        mLastLocation = location;
+        String msg = "Latitude: "+String.valueOf(mLastLocation.getLatitude() + " Longitude: " + String.valueOf(mLastLocation.getLongitude()));
+        Log.d(TAG, msg);
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSIONS_REQUEST_COARSE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-
-                    Toast.makeText(getApplicationContext(), "Permission Achieved", Toast.LENGTH_LONG).show();
-
-
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request.
+        if (!Geocoder.isPresent()) {
+            Log.d(TAG, "no_geocoder_available");
+            return;
         }
+
+        startIntentService();
     }
 
 
+    //Service for reverse-geocoding of location object (coordinates -> region)
     protected void startIntentService() {
 
         Log.d(TAG, "sendingIntent for background calculation");
@@ -329,117 +293,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         startService(intent);
     }
 
-    //#######For connecting to Google API
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
 
-        Log.i(TAG, "onConnected called");
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                    PERMISSIONS_REQUEST_COARSE_LOCATION);
-
-        }
-        //else
-            //Toast.makeText(getApplicationContext(), "Permission granted", Toast.LENGTH_LONG).show();
-
-        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (location == null) {
-
-            Log.d(TAG, "getLastLocation == null");
-            //createLocationRequest();
-            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-
-            /*
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            */
-
-        }
-        else {
-            Log.d(TAG, "getLastLocation != null");
-            reverseGeocode(location);
-            //createLocationRequest();
-            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        }
-
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-        Log.i(TAG, "Location services suspended. Please reconnect.");
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-        Toast.makeText(getApplicationContext(), "Google API connection failed", Toast.LENGTH_LONG).show();
-
-        if (connectionResult.hasResolution()) {
-            try {
-                // Start an Activity that tries to resolve the error
-                connectionResult.startResolutionForResult(this, CONNECTION_FAILURE_RESOLUTION_REQUEST);
-            } catch (IntentSender.SendIntentException e) {
-                e.printStackTrace();
-            }
-        } else {
-            Log.i(TAG, "Location services connection failed with code " + connectionResult.getErrorCode());
-        }
-    }
-
-    //#######Google API
-
-    //#######For LocationListener
-    @Override
-    public void onLocationChanged(Location location) {
-
-        Log.d(TAG, "onLocationChanged");
-        handleNewLocation(location);
-
-        reverseGeocode(location);
-    }
-
-    //#######For LocationListener
-
-    private void reverseGeocode(Location location) {
-
-        Log.d(TAG, "reverseGeocoding");
-        mLastLocation = location;
-        String msg = "Latitude: "+String.valueOf(mLastLocation.getLatitude() + "\nLongitude: " + String.valueOf(mLastLocation.getLongitude()));
-        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
-
-        if (!Geocoder.isPresent()) {
-            Toast.makeText(MainActivity.this,
-                    "no_geocoder_available",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        //In callback of requestLocationUpdate
-        // Start service and update UI to reflect new location
-        startIntentService();
-    }
-
-    private void handleNewLocation(Location location) {
-        Log.d(TAG, location.toString());
-    }
-
+    //Defines callbacks to run upon processing the location object in the reverse-geocoding service
     class AddressResultReceiver extends ResultReceiver {
-        /**
-         * Create a new ResultReceive to receive results.  Your
-         * {@link #onReceiveResult} method will be called from the thread running
-         * <var>handler</var> if given, or from an arbitrary thread if null.
-         *
-         * @param handler
-         */
+
         public AddressResultReceiver(Handler handler) {
             super(handler);
         }
 
+
+        //Callback for when the location object has been processed
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
 
@@ -449,53 +312,39 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 return;
             }
 
-            // Display the address string
-            // or an error message sent from the intent service.
             String city = resultData.getString(Constants.RESULT_DATA_KEY);
-            /*if (city == null) {
-                Log.d(TAG, "geocoder result city is null");
-                city = "";
-            }*/
 
             TextView regionTextView = findViewById(R.id.current_region_text_view);
-            // Show a toast message if an address was found.
             if (resultCode == Constants.SUCCESS_RESULT && city != null) {
+
+                //Current region obtained
                 Log.d(TAG, "geocoder result SUCCESS");
-                //Toast.makeText(getApplicationContext(), "City: "+city, Toast.LENGTH_LONG).show();
                 regionTextView.setText("Region: "+city);
                 currentRegion = city;
                 NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, city);
-                newsListSet = true;
-
-                Intent backgroundService = new Intent(getApplication(), TrendingNewsBackgroundService.class);
-                startService(backgroundService);
             }
             else {
 
+                //Error in processing location object
                 Log.d(TAG, "geocoder result FAILURE");
-                //Toast.makeText(getApplicationContext(), "City Error", Toast.LENGTH_LONG).show();
                 regionTextView.setText("Region Error");
             }
         }
     }
 
-    /*@Override
-    protected void onResume() {
-        super.onResume();
-        mGoogleApiClient.connect();
-    }*/
+
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
+        if(currentRegion != null) {
+            NewsApiRequest.setNewsArticlesList(getApplicationContext(), newsList, MainActivity.this, currentRegion);
+        }
         createLocationRequest();
         startLocationUpdates();
-        /*if (mRequestingLocationUpdates) {
-
-        }*/
     }
+
 
     private void startLocationUpdates() {
 
@@ -506,30 +355,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
 
-    /*@Override
-    protected void onPause() {
-        super.onPause();
-        if (mGoogleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
-            mGoogleApiClient.disconnect();
-        }
-    }*/
-
     @Override
     protected void onPause() {
         super.onPause();
         stopLocationUpdates();
     }
 
+
     private void stopLocationUpdates() {
         mFusedLocationClient.removeLocationUpdates(mLocationCallback);
     }
 
+
+    //For saving currentRegion as location updates are not 100% reliable
     protected void onSaveInstanceState (Bundle outState) {
 
         super.onSaveInstanceState(outState);
         outState.putString("currentRegion", currentRegion);
 
     }
-
 }

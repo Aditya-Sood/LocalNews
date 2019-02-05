@@ -11,6 +11,12 @@ import com.android.volley.toolbox.HttpHeaderParser;
  * Created by sood on 2/2/19.
  */
 
+
+/**
+ * Specialised request class to handle and cache JSON responses from the API
+ * Cached responses are used to display news items when internet is unavailable
+ * */
+
 public class CacheRequest extends Request<NetworkResponse> {
     private final Response.Listener<NetworkResponse> mListener;
     private final Response.ErrorListener mErrorListener;

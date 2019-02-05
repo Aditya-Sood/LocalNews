@@ -9,6 +9,10 @@ import java.util.Date;
  * Created by sood on 1/30/19.
  */
 
+/**
+ * Class denoting news articles as entities for the news list
+ * */
+
 public class NewsItem {
 
     private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
@@ -17,7 +21,7 @@ public class NewsItem {
     private String source;
     private Date date;
     private String url;
-    private String urlToIcon = "https://media1.s-nbcnews.com/j/newscms/2019_05/2734146/190129-cold-weather-ac-929p_a786534c16a83cc04ae303de51bd693a.nbcnews-fp-1200-630.jpg";
+    private String urlToIcon;
 
     public NewsItem(String title, String source, String date, String url, String urlToIcon) {
 
@@ -37,6 +41,7 @@ public class NewsItem {
         }
 
         if(urlToIcon != null && !urlToIcon.isEmpty())   this.urlToIcon = urlToIcon;
+        else                                            this.urlToIcon = null;
     }
 
     public String getTitle() {

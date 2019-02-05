@@ -13,6 +13,12 @@ import com.android.volley.toolbox.Volley;
  * Created by sood on 1/30/19.
  */
 
+
+/**
+ * Singleton class for network request queue
+ * (All network requests are added to & handled by this single instance)
+ * */
+
 public class RequestQueueSingleton {
     private static RequestQueueSingleton mInstance;
     private RequestQueue mRequestQueue;
@@ -49,8 +55,6 @@ public class RequestQueueSingleton {
 
     public RequestQueue getRequestQueue() {
         if (mRequestQueue == null) {
-            // getApplicationContext() is key, it keeps you from leaking the
-            // Activity or BroadcastReceiver if someone passes one in.
             mRequestQueue = Volley.newRequestQueue(mCtx.getApplicationContext());
         }
         return mRequestQueue;
@@ -60,7 +64,4 @@ public class RequestQueueSingleton {
         getRequestQueue().add(req);
     }
 
-    public ImageLoader getImageLoader() {
-        return mImageLoader;
-    }
 }

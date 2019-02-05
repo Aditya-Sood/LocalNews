@@ -8,11 +8,9 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.ResultReceiver;
 import android.support.annotation.Nullable;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -21,6 +19,11 @@ import static com.example.sood.localnews.MainActivity.TAG;
 /**
  * Created by sood on 2/2/19.
  */
+
+/**
+ * Type of IntentService class responsible for reverse-geocoding of location objects
+ * Provides coarse location/region name of the user based on coordinates
+ * */
 
 public class FetchAddressIntentService extends IntentService {
 
@@ -45,15 +48,13 @@ public class FetchAddressIntentService extends IntentService {
         // Get the location passed to this service through an extra.
         Location location = intent.getParcelableExtra(Constants.LOCATION_DATA_EXTRA);
 
-        // ...
-
         List<Address> addresses = null;
 
         try {
             addresses = geocoder.getFromLocation(
                     location.getLatitude(),
                     location.getLongitude(),
-                    // In this sample, get just a single address.
+                    //need a single address for general region
                     1);
         } catch (IOException ioException) {
             // Catch network or other I/O problems.
