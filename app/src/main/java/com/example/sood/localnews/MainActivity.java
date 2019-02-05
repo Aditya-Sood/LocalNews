@@ -51,6 +51,8 @@ import java.util.List;
  *
  *          Hence loading local news can take time (as much as the system takes to respond with a valid location object)
  *
+ *          {Turning on device location generally leads to significantly faster responses}
+ *
  *
  * HOWEVER, top headlines and keyword searches work without any issues
  **/
