@@ -17,6 +17,10 @@ import java.util.ArrayList;
  * Created by sood on 1/30/19.
  */
 
+/**
+ * Custom adapter for the news item entities to be displayed in the list
+ * */
+
 public class NewsItemAdapter extends ArrayAdapter<NewsItem> {
 
     public NewsItemAdapter(Activity context, ArrayList<NewsItem> newsItemList) {
@@ -46,11 +50,20 @@ public class NewsItemAdapter extends ArrayAdapter<NewsItem> {
         newsDateTextView.setText(currentNewsItem.getDate());
 
         ImageView newsIconImageView = listItemView.findViewById(R.id.news_item_icon_image_view);
-        Picasso.get()
-                .load(currentNewsItem.getUrlToIcon())
-                .centerCrop()
-                .fit()
-                .into(newsIconImageView);
+        String urlToImage = currentNewsItem.getUrlToIcon();
+        if(urlToImage == null)
+            newsIconImageView.setImageResource(R.drawable.news_logo);
+        else {
+            /*
+            * Picasso caches the image from a particular url on its own
+            * So when the adapter displays a list item which recently went off-screen, the image is already available in the cache
+            * */
+            Picasso.get()
+                    .load(currentNewsItem.getUrlToIcon())
+                    .centerCrop()
+                    .fit()
+                    .into(newsIconImageView);
+        }
 
         return listItemView;
     }

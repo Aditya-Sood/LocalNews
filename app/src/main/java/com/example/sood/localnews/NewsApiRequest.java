@@ -20,13 +20,12 @@ import java.util.ArrayList;
  * Created by sood on 1/30/19.
  */
 
+/**
+ * Helper class for requesting news articles from the API and displaying them
+ * */
+
 public class NewsApiRequest {
 
-    /*
-    * Make API request
-    * Parse response
-    * Display list
-    * */
     public static void setNewsArticlesList(final Context applicationCtx, final ListView newsList, final Activity listActivity, String keyword) {
 
         String baseUrl;

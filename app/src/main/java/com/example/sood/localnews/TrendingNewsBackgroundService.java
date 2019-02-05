@@ -26,6 +26,11 @@ import java.io.UnsupportedEncodingException;
  * Created by sood on 2/3/19.
  */
 
+/**
+ * Specialised JobService class to periodically create notifications of trending headlines
+ * (Background job which executes after a specified interval)
+ * */
+
 public class TrendingNewsBackgroundService extends JobService {
 
     private static final String TAG = TrendingNewsBackgroundService.class.getSimpleName();

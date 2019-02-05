@@ -20,6 +20,11 @@ import static com.example.sood.localnews.MainActivity.TAG;
  * Created by sood on 2/2/19.
  */
 
+/**
+ * Type of IntentService class responsible for reverse-geocoding of location objects
+ * Provides coarse location/region name of the user based on coordinates
+ * */
+
 public class FetchAddressIntentService extends IntentService {
 
     protected ResultReceiver mReceiver;

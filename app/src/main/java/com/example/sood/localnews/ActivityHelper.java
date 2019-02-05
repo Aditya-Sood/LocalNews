@@ -5,6 +5,8 @@ import android.content.pm.ActivityInfo;
 
 /**
  * Created by sood on 1/31/19.
+ *
+ * Helper class to fix screen orientation on creation
  */
 
 public class ActivityHelper {

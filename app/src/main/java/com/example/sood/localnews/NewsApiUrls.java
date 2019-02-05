@@ -4,12 +4,14 @@ package com.example.sood.localnews;
  * Created by sood on 1/30/19.
  */
 
+/**/
+
 public class NewsApiUrls {
 
     private static final String API_KEY = "9a274165beeb47e4a7493e149d6ab586";
     private static final String LANGUAGE = "en";
     private static final String COUNTRY = "in";
-    private static final String PAGE_SIZE = "10";
+    private static final String PAGE_SIZE = "20";
 
     private static final String PROTOCOL = "https";
     private static final String HOST = "newsapi.org";
